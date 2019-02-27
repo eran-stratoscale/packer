@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
-	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	commonhelper "github.com/hashicorp/packer/helper/common"
 	"github.com/hashicorp/packer/template/interpolate"
 	vaultapi "github.com/hashicorp/vault/api"
@@ -70,14 +69,6 @@ func (c *AccessConfig) Session() (*session.Session, error) {
 
 	if c.CustomEndpointEc2 != "" {
 		config = config.WithEndpoint(c.CustomEndpointEc2)
-	}
-
-	if c.InsecureSkipTLSVerify {
-		config := config.WithHTTPClient(cleanhttp.DefaultClient())
-		transport := config.HTTPClient.Transport.(*http.Transport)
-		transport.TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true,
-		}
 	}
 
 	opts := session.Options{
@@ -213,6 +204,11 @@ func (c *AccessConfig) NewEC2Connection() (ec2iface.EC2API, error) {
 	ec2conn := ec2.New(sess, &aws.Config{
 		HTTPClient: commonhelper.HttpClientWithEnvironmentProxy(),
 	})
-
+	if c.InsecureSkipTLSVerify {
+		transport := ec2conn.Config.HTTPClient.Transport.(*http.Transport)
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true,
+		}
+	}
 	return ec2conn, nil
 }
